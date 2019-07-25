@@ -1,0 +1,1 @@
+{"version":3,"sources":["webpack:///./src/_scss/index.scss"],"names":[],"mappings":"AAAA;AACA,YAAY;;AAEZ;AACA,iBAAiB","file":"assets/css/app.css","sourcesContent":["body {\n  margin: 0; }\n\ncanvas {\n  display: block; }\n"],"sourceRoot":""}

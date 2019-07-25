@@ -1,0 +1,115 @@
+<!DOCTYPE html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><meta name="keywords" content=""><meta name="description" content=""><meta property="og:title" content=""><meta property="og:site_name" content=""><meta property="og:url" content=""><meta property="og:image" content=""><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:description" content=""><meta property="og:type" content=""><title>webgl test</title><link href="assets/css/app.css" rel="stylesheet"></head><body><div class="scene"><canvas id="canvas"></canvas></div><script>(function() {
+	var script = document.createElement("script");
+	script.onload = function() {
+		var stats = new Stats();
+		document.body.appendChild(stats.dom);
+		requestAnimationFrame(function loop() {
+			stats.update();
+			requestAnimationFrame(loop);
+		});
+	};
+	script.src = "//mrdoob.github.io/stats.js/build/stats.min.js";
+	document.head.appendChild(script);
+})();</script><script type="x-shader/x-vertex" id="vertexShader">//- uniform float u_size;
+
+attribute vec3 color;
+attribute float size;
+
+varying vec3 vWorldPosition;
+varying vec3 realColor;
+varying vec3 vNormal;
+varying vec3 viewPos;
+varying float vSize;
+
+// chunk(common);
+// chunk(shadowmap_pars_vertex);
+
+void main () {
+	vec4 worldPosition  = modelMatrix * vec4(position, 1.0);
+	vec4 mvPosition = viewMatrix  * worldPosition;
+
+	vWorldPosition = worldPosition.xyz;
+	realColor = color;
+	vNormal = position;
+	viewPos = cameraPosition;
+	vSize = size;
+
+	gl_PointSize = size * (400.0 / length(mvPosition.xyz));
+	gl_Position = projectionMatrix * viewMatrix  * worldPosition;
+
+	// chunk(shadowmap_vertex);
+}</script><script type="x-shader/x-fragment" id="fragmentShader">uniform vec3 lightPosition;
+uniform vec3 lightColor;
+uniform float lightStrength;
+uniform float ambientLight_strength;
+uniform vec3 ambientLight_color;
+
+
+varying vec3 vWorldPosition;
+varying vec3 realColor;
+varying vec3 vNormal;
+varying vec3 viewPos;
+varying float vSize;
+
+#include <common>
+#include <packing>
+#include <bsdfs>
+
+#include <lights_pars_begin>
+#include <shadowmap_pars_fragment>
+#include <shadowmask_pars_fragment>
+
+
+void main () {
+	float r = 0.0;
+	vec2 cxy = 2.0 * gl_PointCoord - 1.0;
+
+	r = dot(cxy, cxy);
+	if (r > 1.0 || vSize <= 0.0) {
+		discard;
+	}
+
+	vec3 ambient = ambientLight_strength * ambientLight_color;
+
+	vec3 norm = normalize(vNormal);
+	vec3 lightDir = normalize(lightPosition - vWorldPosition);
+	float diff = max(dot(norm, lightDir), 0.0);
+	vec3 diffuse = diff * lightColor * lightStrength;
+
+	//- vec3 viewDir = normalize(viewPos - vWorldPosition);
+	//- vec3 reflectDir = reflect(-lightDir, norm);
+	//- float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+	//- vec3 specular = 0.5 * spec * lightColor;
+
+	vec3 outgoingLight = realColor * (ambient + diffuse);
+
+	float shadow = smoothstep(0.0, 0.1, getShadowMask());
+	outgoingLight *= 0.65 + shadow * 0.35;
+
+	gl_FragColor = vec4(outgoingLight, 1.0);
+}
+</script><script type="x-shader/x-vertex" id="depthVertexShader">//- uniform float u_size;
+attribute float size;
+varying vec4 vWorldPosition;
+
+void main () {
+	vec4 worldPosition  = modelMatrix * vec4(position, 1.0);
+	vec4 mvPosition = viewMatrix  * worldPosition;
+
+	vWorldPosition = worldPosition;
+	gl_PointSize = size * (400.0 / length(mvPosition.xyz));
+	gl_Position = projectionMatrix * viewMatrix  * worldPosition;
+	//- gl_PointSize = max(size / gl_Position.w, 1.0);
+}</script><script type="x-shader/x-vertex" id="depthFragmentShader">#include <packing>
+
+void main(){
+	//- float r = 0.0;
+	//- vec2 cxy = 2.0 * gl_PointCoord - 1.0;
+
+	//- r = dot(cxy, cxy);
+	//- if (r > 1.0) {
+	//- 	discard;
+	//- }
+
+	gl_FragColor = packDepthToRGBA(gl_FragCoord.z);
+}</script><script type="text/javascript" src="assets/js/vendor.bundle.js"></script><script type="text/javascript" src="assets/js/app.bundle.js"></script></body>
